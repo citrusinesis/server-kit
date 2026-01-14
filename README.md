@@ -1,14 +1,14 @@
 # server-kit
 
-axum 기반 서버의 보일러플레이트를 줄여주는 얇은 유틸리티 크레이트.
+A thin utility crate for reducing axum server boilerplate.
 
-## 철학
+## Philosophy
 
-- **최소한의 구현**: 이미 잘 만들어진 크레이트들을 재사용
-- **얇은 래퍼**: axum/tower의 API를 가리지 않음
-- **선택적 사용**: feature flag로 필요한 것만 포함
+- **Minimal implementation**: Reuse well-established crates
+- **Thin wrapper**: Don't hide axum/tower APIs
+- **Opt-in features**: Include only what you need via feature flags
 
-## 설치
+## Installation
 
 ```toml
 [dependencies]
@@ -17,15 +17,16 @@ server-kit = { version = "0.1", features = ["full"] }
 
 ### Features
 
-| Feature       | 설명            | 기본값 |
-| ------------- | --------------- | ------ |
-| `tracing`     | TraceLayer 포함 | ✓      |
-| `compression` | gzip/br 압축    | ✓      |
-| `cors`        | CORS 레이어     | ✗      |
-| `metrics`     | Prometheus 메트릭 | ✗    |
-| `full`        | 모든 기능       | ✗      |
+| Feature       | Description               | Default |
+| ------------- | ------------------------- | ------- |
+| `tracing`     | Request tracing layer     | Yes     |
+| `compression` | gzip/br compression       | Yes     |
+| `cors`        | CORS layer                | No      |
+| `metrics`     | Prometheus metrics        | No      |
+| `ratelimit`   | Rate limiting             | No      |
+| `full`        | All features              | No      |
 
-## 빠른 시작
+## Quick Start
 
 ```rust
 use axum::{Router, routing::get};
@@ -47,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-레이어와 함께 사용:
+With default layers:
 
 ```rust
 use axum::Router;
@@ -71,11 +72,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## 제공 기능
+## API Reference
 
 ### ServerConfig::builder()
 
-설정 빌더를 생성합니다.
+Creates a configuration builder.
 
 ```rust
 use server_kit::{ServerConfig, ServerError};
@@ -86,38 +87,38 @@ let config: ServerConfig = ServerConfig::builder()
     .build()?;
 ```
 
-| 메서드 | 설명 |
-| ------ | ---- |
-| `with_dotenv()` | 현재 디렉토리의 `.env` 파일 로드 |
-| `with_config_file(path)` | 설정 파일 로드 (확장자로 형식 자동 감지) |
-| `with_logging_from_env()` | 환경변수에서 로깅 설정 (`LOG_FORMAT`, `RUST_LOG`) |
-| `build::<T>()` | 설정을 `T` 타입으로 반환 |
+| Method                    | Description                                         |
+| ------------------------- | --------------------------------------------------- |
+| `with_dotenv()`           | Load `.env` file from current directory             |
+| `with_config_file(path)`  | Load config file (format auto-detected by extension)|
+| `with_logging_from_env()` | Configure logging from env vars (`LOG_FORMAT`, `RUST_LOG`) |
+| `build::<T>()`            | Build and return config as type `T`                 |
 
-#### 지원하는 설정 파일 형식
+#### Supported Config Formats
 
-| 확장자 | 형식 | 동작 |
-| ------ | ---- | ---- |
-| `.env` | dotenv | 환경변수로 로드 (여러 개 가능) |
-| `.toml` | TOML | ServerConfig로 파싱 |
-| `.yaml` / `.yml` | YAML | ServerConfig로 파싱 |
-| `.json` | JSON | ServerConfig로 파싱 |
+| Extension        | Format | Behavior                              |
+| ---------------- | ------ | ------------------------------------- |
+| `.env`           | dotenv | Load as environment variables         |
+| `.toml`          | TOML   | Parse as ServerConfig                 |
+| `.yaml` / `.yml` | YAML   | Parse as ServerConfig                 |
+| `.json`          | JSON   | Parse as ServerConfig                 |
 
 ```rust
-// 여러 설정 파일 조합
+// Combining multiple config files
 let config: ServerConfig = ServerConfig::builder()
     .with_dotenv()                    // .env
-    .with_config_file(".env.local")   // .env.local (환경변수 추가)
-    .with_config_file("config.yaml")  // 메인 설정 (마지막 설정 파일 사용)
+    .with_config_file(".env.local")   // .env.local (additional env vars)
+    .with_config_file("config.yaml")  // main config (last config file wins)
     .build()?;
 ```
 
-- `.env` 파일들은 순서대로 환경변수에 로드됩니다
-- 설정 파일 (toml/yaml/json)은 마지막 것만 사용됩니다
-- 환경변수가 설정 파일 값을 오버라이드합니다
+- `.env` files are loaded into environment variables in order
+- Config files (toml/yaml/json) use only the last one specified
+- Environment variables override config file values
 
-#### 커스텀 설정 확장
+#### Custom Config Extension
 
-`AsRef<ServerConfig>`를 구현하면 커스텀 설정을 사용할 수 있습니다.
+Implement `AsRef<ServerConfig>` to use custom configuration types.
 
 ```rust
 use serde::Deserialize;
@@ -154,38 +155,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### RouterExt::serve()
+### RouterExt
 
-Router에 대한 확장 trait으로, graceful shutdown을 지원하는 서버를 시작합니다.
+Extension trait for `Router` providing server-kit functionality.
 
 ```rust
 use server_kit::{RouterExt, ServerConfig};
 
 Router::new()
     .route("/", get(handler))
+    .with_health_check()      // Add /health endpoint
+    .with_fallback()          // JSON 404 handler
+    .with_default_layers(&config)
     .serve(&config)
     .await?;
 ```
 
-`SIGINT` (Ctrl+C)와 `SIGTERM` 신호를 처리하며, 진행 중인 요청이 완료될 때까지 기다린 후 종료합니다.
-
 ### ServerConfig
 
-서버 설정을 담는 구조체입니다.
+Server configuration struct.
 
-| 환경변수               | 기본값        | 설명               |
-| ---------------------- | ------------- | ------------------ |
-| `APP_ENV`/`RUST_ENV`/`ENVIRONMENT` | `development` | 환경 모드 (`production`/`prod` 또는 `development`) |
-| `HOST`                 | `0.0.0.0`     | 바인딩 호스트      |
-| `PORT`                 | `3000`        | 포트               |
-| `REQUEST_TIMEOUT_SECS` | `30`          | 요청 타임아웃 (초) |
-| `CORS_ORIGINS`         | `[]`          | 허용 오리진 (`cors` feature 활성화 시 적용) |
+| Environment Variable               | Default       | Description                                   |
+| ---------------------------------- | ------------- | --------------------------------------------- |
+| `APP_ENV`/`RUST_ENV`/`ENVIRONMENT` | `development` | Environment mode (`production` or `development`) |
+| `HOST`                             | `0.0.0.0`     | Bind host                                     |
+| `PORT`                             | `3000`        | Port                                          |
+| `REQUEST_TIMEOUT_SECS`             | `30`          | Request timeout in seconds                    |
+| `CORS_ORIGINS`                     | `[]`          | Allowed origins (requires `cors` feature)     |
 
-**Environment 우선순위**: `ENVIRONMENT` > `APP_ENV` > `RUST_ENV` (대소문자 무관)
+**Environment priority**: `ENVIRONMENT` > `APP_ENV` > `RUST_ENV` (case-insensitive)
 
 ```rust
 pub struct ServerConfig {
-    pub environment: Environment,  // Production 모드에서는 에러 상세 메시지 숨김
+    pub environment: Environment,  // Production mode hides error details
     pub host: String,
     pub port: u16,
     pub request_timeout_secs: u64,
@@ -193,20 +195,21 @@ pub struct ServerConfig {
 }
 ```
 
-#### 설정 파일 예시
+#### Config File Example
 
 **config.toml**
+
 ```toml
 environment = "production"
 host = "0.0.0.0"
 port = 8080
 request_timeout_secs = 60
-cors_origins = ["https://example.com"]  # feature: cors
+cors_origins = ["https://example.com"]  # requires cors feature
 ```
 
 ### with_default_layers
 
-`RouterExt` trait을 통해 자주 사용하는 미들웨어를 적용합니다.
+Applies commonly used middleware via the `RouterExt` trait.
 
 ```rust
 use server_kit::RouterExt;
@@ -216,51 +219,81 @@ let app = Router::new()
     .with_default_layers(&config);
 ```
 
-포함된 레이어:
+Included layers:
 
-1. `CatchPanicLayer` - panic을 500 응답으로 변환
-2. `RequestIdLayer` - X-Request-Id 헤더 생성/전파
-3. `TraceLayer` - 요청/응답 로깅
-4. `TimeoutLayer` - 요청 타임아웃 (`request_timeout_secs`)
-5. `CompressionLayer` - 응답 압축 (feature: `compression`)
-6. `CorsLayer` - CORS (feature: `cors`, `cors_origins` 설정시)
-7. `JsonErrorLayer` - 에러 응답을 JSON으로 변환
+1. `CatchPanicLayer` - Converts panics to 500 responses
+2. `RequestIdLayer` - Generates/propagates X-Request-Id header
+3. `TraceLayer` - Request/response logging
+4. `TimeoutLayer` - Request timeout (`request_timeout_secs`)
+5. `CompressionLayer` - Response compression (feature: `compression`)
+6. `CorsLayer` - CORS support (feature: `cors`, when `cors_origins` configured)
+7. `JsonErrorLayer` - Converts error responses to JSON
 
-### fallback_handler
+### Rate Limiting (feature: `ratelimit`)
 
-존재하지 않는 경로 접근 시 JSON 에러를 반환합니다.
+Add rate limiting to your routes.
+
+```rust
+use server_kit::RouterExt;
+use std::time::Duration;
+
+let app = Router::new()
+    .route("/api", get(handler))
+    .with_rate_limit(100, Duration::from_secs(1));  // 100 req/sec
+```
+
+Or use `RateLimitLayer` directly:
+
+```rust
+use server_kit::RateLimitLayer;
+
+let app = Router::new()
+    .route("/api", get(handler))
+    .layer(RateLimitLayer::per_second(100))
+    .layer(RateLimitLayer::per_minute(1000));
+```
+
+Rate limited responses return:
+
+```json
+{ "code": "TOO_MANY_REQUESTS", "message": "Rate limit exceeded" }
+```
+
+### Health Routes
+
+Provides basic health check endpoints.
+
+```rust
+use server_kit::RouterExt;
+
+let app = Router::new().with_health_check();  // same as .merge(health_routes())
+```
+
+| Path          | Response                     |
+| ------------- | ---------------------------- |
+| `GET /health` | `200 OK` - Server is running |
+
+### Fallback Handler
+
+Returns JSON error for non-existent routes.
 
 ```rust
 use server_kit::RouterExt;
 
 let app = Router::new()
     .route("/", get(handler))
-    .with_fallback();  // .fallback(fallback_handler) 와 동일
+    .with_fallback();  // same as .fallback(fallback_handler)
 ```
 
-응답:
+Response:
+
 ```json
-{"code":"NOT_FOUND","message":"The requested resource was not found"}
+{ "code": "NOT_FOUND", "message": "The requested resource was not found" }
 ```
 
-### health_routes
+### HttpError Trait
 
-기본 헬스체크 엔드포인트를 제공합니다.
-
-```rust
-use server_kit::RouterExt;
-
-let app = Router::new().with_health_check();  // .merge(health_routes()) 와 동일
-```
-
-| 경로          | 응답                        |
-| ------------- | --------------------------- |
-| `GET /health` | `200 OK` - 서버 동작 확인   |
-| `GET /ready`  | `200 OK` - 서비스 준비 상태 |
-
-### HttpError trait
-
-통일된 에러 응답 포맷을 위한 trait입니다.
+Trait for unified error response format.
 
 ```rust
 use server_kit::{HttpError, StatusCode};
@@ -294,20 +327,21 @@ impl IntoResponse for AppError {
     }
 }
 
-// 핸들러에서 사용
+// Usage in handlers
 async fn get_user(Path(id): Path<i64>) -> Result<Json<User>, AppError> {
     find_user(id).await.ok_or(AppError::NotFound)
 }
 ```
 
-응답 포맷:
+Response format:
+
 ```json
-{"code": "NOT_FOUND", "message": "Resource not found"}
+{ "code": "NOT_FOUND", "message": "Resource not found" }
 ```
 
 ### Metrics (feature: `metrics`)
 
-Prometheus 메트릭을 수집합니다.
+Collect Prometheus metrics.
 
 ```rust
 use server_kit::RouterExt;
@@ -315,23 +349,33 @@ use server_kit::RouterExt;
 let app = Router::new()
     .route("/", get(handler))
     .with_default_layers(&config)
-    .with_metrics();  // 기본 경로: /metrics
+    .with_metrics();  // default path: /metrics
 
-// 또는 커스텀 경로 사용
+// Or with custom path
 let app = Router::new()
     .route("/", get(handler))
     .with_metrics_at("/internal/metrics");
 ```
 
-수집되는 메트릭:
-- `http_requests_total` - 요청 수 (method, path, status)
-- `http_request_duration_seconds` - 응답 시간 (method, path, status)
+Collected metrics:
 
-경로는 axum의 `MatchedPath`를 사용하여 라우트 템플릿으로 기록됩니다:
-- `GET /users/123` → `path="/users/{id}"` (라우트가 `/users/{id}`로 정의된 경우)
-- 매칭되지 않는 경로는 원본 URI 경로가 사용됩니다
+- `http_requests_total` - Request count (method, path, status)
+- `http_request_duration_seconds` - Response time (method, path, status)
 
-## 전체 예시
+## Workspace Crates
+
+### server-kit-auth
+
+Authentication utilities for axum servers.
+
+```toml
+[dependencies]
+server-kit-auth = { version = "0.1" }
+```
+
+See [server-kit-auth](./crates/server-kit-auth) for details.
+
+## Full Example
 
 ```rust
 use axum::{Router, routing::{get, post}, Json, extract::Path};
@@ -387,6 +431,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## 라이센스
+## License
 
 MIT
