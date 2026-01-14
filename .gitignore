@@ -1,0 +1,17 @@
+# Build artifacts
+/target/
+
+# Cargo.lock for libraries
+Cargo.lock
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store

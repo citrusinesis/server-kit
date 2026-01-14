@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/server-kit",
+    "crates/server-kit-auth",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+axum = "0.8"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tower = "0.5"
+tracing = "0.1"
+
+# Internal crates
+server-kit = { path = "crates/server-kit" }

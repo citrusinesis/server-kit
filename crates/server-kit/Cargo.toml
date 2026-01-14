@@ -1,0 +1,65 @@
+[package]
+name = "server-kit"
+version = "0.1.0"
+edition = "2021"
+description = "Thin utility crate for axum-based servers"
+license = "MIT"
+keywords = ["axum", "server", "http", "tower"]
+categories = ["web-programming::http-server"]
+
+[features]
+default = ["tracing", "compression"]
+tracing = ["dep:tracing-subscriber"]
+compression = ["tower-http/compression-full"]
+cors = ["tower-http/cors"]
+metrics = ["dep:metrics", "dep:metrics-exporter-prometheus"]
+ratelimit = ["dep:governor"]
+full = ["tracing", "compression", "cors", "metrics", "ratelimit"]
+
+[dependencies]
+axum = "0.8"
+config = { version = "0.15", default-features = false, features = ["toml", "yaml", "json"] }
+dotenvy = "0.15"
+http = "1"
+http-body-util = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["signal", "rt-multi-thread", "macros"] }
+tower = { version = "0.5", features = ["timeout"] }
+tower-http = { version = "0.6", features = [
+    "catch-panic",
+    "request-id",
+    "trace",
+    "util",
+    "timeout",
+] }
+
+[dependencies.tracing]
+version = "0.1"
+optional = false
+
+[dependencies.tracing-subscriber]
+version = "0.3"
+features = ["env-filter", "json"]
+optional = true
+
+[dependencies.metrics]
+version = "0.24"
+optional = true
+
+[dependencies.metrics-exporter-prometheus]
+version = "0.16"
+optional = true
+
+[dependencies.governor]
+version = "0.8"
+optional = true
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+hyper = "1"
+tempfile = "3"
+
+[[example]]
+name = "with_metrics"
+required-features = ["metrics"]
