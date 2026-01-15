@@ -1,9 +1,8 @@
+//! Configuration loading utilities.
+
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::time::Duration;
 
 #[cfg(feature = "tracing")]
 use crate::logging::{init_logging, LogFormat};
@@ -28,113 +27,9 @@ impl std::fmt::Display for ConfigError {
 
 impl std::error::Error for ConfigError {}
 
-/// Application environment.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
-pub enum Environment {
-    #[default]
-    Development,
-    Production,
-}
-
-impl FromStr for Environment {
-    type Err = std::convert::Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s.to_lowercase().as_str() {
-            "production" | "prod" => Self::Production,
-            _ => Self::Development,
-        })
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for Environment {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Ok(s.parse().unwrap())
-    }
-}
-
-impl Environment {
-    /// Load from `APP_ENV` or `RUST_ENV` environment variable.
-    pub fn from_env() -> Self {
-        env::var("APP_ENV")
-            .or_else(|_| env::var("RUST_ENV"))
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or_default()
-    }
-
-    pub fn is_production(&self) -> bool {
-        matches!(self, Self::Production)
-    }
-
-    pub fn is_development(&self) -> bool {
-        matches!(self, Self::Development)
-    }
-}
-
-/// Server configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct ServerConfig {
-    pub environment: Environment,
-    pub host: String,
-    pub port: u16,
-    pub request_timeout_secs: u64,
-    /// CORS allowed origins. Empty means CORS is disabled.
-    /// Only used when `cors` feature is enabled.
-    #[serde(default)]
-    pub cors_origins: Vec<String>,
-}
-
-impl Default for ServerConfig {
-    fn default() -> Self {
-        Self {
-            environment: Environment::default(),
-            host: "0.0.0.0".to_string(),
-            port: 3000,
-            request_timeout_secs: 30,
-            cors_origins: Vec::new(),
-        }
-    }
-}
-
-impl ServerConfig {
-    /// Create a new configuration builder.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// let config: ServerConfig = ServerConfig::builder()
-    ///     .with_dotenv()
-    ///     .with_config_file("config.toml")
-    ///     .build()?;
-    /// ```
-    pub fn builder() -> ConfigBuilder {
-        ConfigBuilder::new()
-    }
-
-    pub fn request_timeout(&self) -> Duration {
-        Duration::from_secs(self.request_timeout_secs)
-    }
-
-    pub(crate) fn addr(&self) -> String {
-        format!("{}:{}", self.host, self.port)
-    }
-}
-
-impl AsRef<ServerConfig> for ServerConfig {
-    fn as_ref(&self) -> &ServerConfig {
-        self
-    }
-}
-
 /// Supported config file formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ConfigFormat {
+pub enum ConfigFormat {
     DotEnv,
     Toml,
     Yaml,
@@ -142,7 +37,7 @@ enum ConfigFormat {
 }
 
 impl ConfigFormat {
-    fn from_path(path: impl AsRef<Path>) -> Option<Self> {
+    pub fn from_path(path: impl AsRef<Path>) -> Option<Self> {
         let ext = path.as_ref().extension()?.to_str()?;
         match ext.to_lowercase().as_str() {
             "env" => Some(Self::DotEnv),
@@ -159,9 +54,16 @@ impl ConfigFormat {
 /// # Example
 ///
 /// ```ignore
-/// use server_kit::ServerConfig;
+/// use server_kit::ConfigBuilder;
+/// use serde::Deserialize;
 ///
-/// let config: ServerConfig = ServerConfig::builder()
+/// #[derive(Deserialize)]
+/// struct MyConfig {
+///     host: String,
+///     port: u16,
+/// }
+///
+/// let config: MyConfig = ConfigBuilder::new()
 ///     .with_dotenv()
 ///     .with_config_file("config.toml")
 ///     .build()?;
@@ -204,14 +106,6 @@ impl ConfigBuilder {
     }
 
     /// Build and return the configuration.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// let config: ServerConfig = ServerConfig::builder()
-    ///     .with_dotenv()
-    ///     .build()?;
-    /// ```
     pub fn build<C: DeserializeOwned>(self) -> Result<C, ConfigError> {
         if self.load_default_dotenv {
             let _ = dotenvy::dotenv();
@@ -252,7 +146,7 @@ impl ConfigBuilder {
 }
 
 /// Load config from environment variables only.
-fn load_from_env<C: DeserializeOwned>() -> Result<C, ConfigError> {
+pub fn load_from_env<C: DeserializeOwned>() -> Result<C, ConfigError> {
     use config::Config;
 
     Config::builder()
@@ -263,7 +157,7 @@ fn load_from_env<C: DeserializeOwned>() -> Result<C, ConfigError> {
 }
 
 /// Load config from file with env var overrides.
-fn load_config_file<C: DeserializeOwned>(path: &Path) -> Result<C, ConfigError> {
+pub fn load_config_file<C: DeserializeOwned>(path: &Path) -> Result<C, ConfigError> {
     use config::{Config, File};
 
     if !path.exists() {
@@ -316,63 +210,39 @@ impl config::Source for EnvSource {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::Deserialize;
     use std::io::Write;
 
-    #[test]
-    fn environment_from_str() {
-        assert_eq!("production".parse::<Environment>().unwrap(), Environment::Production);
-        assert_eq!("Production".parse::<Environment>().unwrap(), Environment::Production);
-        assert_eq!("PRODUCTION".parse::<Environment>().unwrap(), Environment::Production);
-        assert_eq!("prod".parse::<Environment>().unwrap(), Environment::Production);
-        assert_eq!("development".parse::<Environment>().unwrap(), Environment::Development);
-        assert_eq!("dev".parse::<Environment>().unwrap(), Environment::Development);
-        assert_eq!("anything".parse::<Environment>().unwrap(), Environment::Development);
-    }
-
-    #[test]
-    fn environment_is_methods() {
-        assert!(Environment::Production.is_production());
-        assert!(!Environment::Production.is_development());
-        assert!(Environment::Development.is_development());
-        assert!(!Environment::Development.is_production());
-    }
-
-    #[test]
-    fn server_config_defaults() {
-        let config = ServerConfig::default();
-        assert_eq!(config.host, "0.0.0.0");
-        assert_eq!(config.port, 3000);
-        assert_eq!(config.request_timeout_secs, 30);
-        assert!(config.cors_origins.is_empty());
-        assert!(config.environment.is_development());
-    }
-
-    #[test]
-    fn server_config_addr() {
-        let config = ServerConfig {
-            host: "127.0.0.1".to_string(),
-            port: 8080,
-            ..Default::default()
-        };
-        assert_eq!(config.addr(), "127.0.0.1:8080");
-    }
-
-    #[test]
-    fn server_config_request_timeout() {
-        let config = ServerConfig {
-            request_timeout_secs: 60,
-            ..Default::default()
-        };
-        assert_eq!(config.request_timeout(), Duration::from_secs(60));
+    #[derive(Debug, Deserialize, Default)]
+    struct TestConfig {
+        #[serde(default)]
+        host: String,
+        #[serde(default)]
+        port: u16,
     }
 
     #[test]
     fn config_format_from_path() {
-        assert_eq!(ConfigFormat::from_path("config.toml"), Some(ConfigFormat::Toml));
-        assert_eq!(ConfigFormat::from_path("config.yaml"), Some(ConfigFormat::Yaml));
-        assert_eq!(ConfigFormat::from_path("config.yml"), Some(ConfigFormat::Yaml));
-        assert_eq!(ConfigFormat::from_path("config.json"), Some(ConfigFormat::Json));
-        assert_eq!(ConfigFormat::from_path("settings.env"), Some(ConfigFormat::DotEnv));
+        assert_eq!(
+            ConfigFormat::from_path("config.toml"),
+            Some(ConfigFormat::Toml)
+        );
+        assert_eq!(
+            ConfigFormat::from_path("config.yaml"),
+            Some(ConfigFormat::Yaml)
+        );
+        assert_eq!(
+            ConfigFormat::from_path("config.yml"),
+            Some(ConfigFormat::Yaml)
+        );
+        assert_eq!(
+            ConfigFormat::from_path("config.json"),
+            Some(ConfigFormat::Json)
+        );
+        assert_eq!(
+            ConfigFormat::from_path("settings.env"),
+            Some(ConfigFormat::DotEnv)
+        );
         assert_eq!(ConfigFormat::from_path("config.txt"), None);
         assert_eq!(ConfigFormat::from_path("noextension"), None);
         assert_eq!(ConfigFormat::from_path(".env"), None);
@@ -388,19 +258,17 @@ mod tests {
             r#"
             host = "127.0.0.1"
             port = 8080
-            request_timeout_secs = 60
             "#,
         )
         .unwrap();
 
-        let config: ServerConfig = ServerConfig::builder()
+        let config: TestConfig = ConfigBuilder::new()
             .with_config_file(&config_path)
             .build()
             .unwrap();
 
         assert_eq!(config.host, "127.0.0.1");
         assert_eq!(config.port, 8080);
-        assert_eq!(config.request_timeout_secs, 60);
     }
 
     #[test]
@@ -413,19 +281,17 @@ mod tests {
             r#"
 host: "192.168.1.1"
 port: 9000
-environment: production
 "#,
         )
         .unwrap();
 
-        let config: ServerConfig = ServerConfig::builder()
+        let config: TestConfig = ConfigBuilder::new()
             .with_config_file(&config_path)
             .build()
             .unwrap();
 
         assert_eq!(config.host, "192.168.1.1");
         assert_eq!(config.port, 9000);
-        assert!(config.environment.is_production());
     }
 
     #[test]
@@ -433,13 +299,9 @@ environment: production
         let dir = tempfile::tempdir().unwrap();
         let config_path = dir.path().join("config.json");
 
-        std::fs::write(
-            &config_path,
-            r#"{"host": "10.0.0.1", "port": 5000}"#,
-        )
-        .unwrap();
+        std::fs::write(&config_path, r#"{"host": "10.0.0.1", "port": 5000}"#).unwrap();
 
-        let config: ServerConfig = ServerConfig::builder()
+        let config: TestConfig = ConfigBuilder::new()
             .with_config_file(&config_path)
             .build()
             .unwrap();
@@ -450,7 +312,7 @@ environment: production
 
     #[test]
     fn config_builder_file_not_found() {
-        let result: Result<ServerConfig, _> = ServerConfig::builder()
+        let result: Result<TestConfig, _> = ConfigBuilder::new()
             .with_config_file("/nonexistent/path/config.toml")
             .build();
 
@@ -476,7 +338,7 @@ environment: production
         let mut file = std::fs::File::create(&env_path).unwrap();
         writeln!(file, "TEST_VAR_FOR_DOTENV=hello").unwrap();
 
-        let _: ServerConfig = ServerConfig::builder()
+        let _: TestConfig = ConfigBuilder::new()
             .with_config_file(&env_path)
             .build()
             .unwrap();

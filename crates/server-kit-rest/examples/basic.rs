@@ -5,7 +5,7 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use server_kit::{HttpError, RouterExt, ServerConfig, StatusCode};
+use server_kit_rest::{HttpError, RouterExt, ServerConfig, StatusCode};
 
 #[derive(Serialize)]
 struct User {

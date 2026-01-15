@@ -2,6 +2,8 @@
 resolver = "2"
 members = [
     "crates/server-kit",
+    "crates/server-kit-rest",
+    "crates/server-kit-grpc",
     "crates/server-kit-auth",
 ]
 
@@ -19,3 +21,5 @@ tracing = "0.1"
 
 # Internal crates
 server-kit = { path = "crates/server-kit" }
+server-kit-rest = { path = "crates/server-kit-rest" }
+server-kit-grpc = { path = "crates/server-kit-grpc" }

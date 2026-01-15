@@ -41,6 +41,8 @@
             fenixPkgs.rust-analyzer
             pkgs.cargo-watch
             pkgs.cargo-deny
+            pkgs.protobuf
+            pkgs.grpcurl
           ];
         };
       }

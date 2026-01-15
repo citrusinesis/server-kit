@@ -1,6 +1,6 @@
 use axum::{routing::get, Json, Router};
 use serde::Serialize;
-use server_kit::{RouterExt, ServerConfig};
+use server_kit_rest::{RouterExt, ServerConfig};
 
 #[derive(Serialize)]
 struct Status {

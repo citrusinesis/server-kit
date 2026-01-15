@@ -47,21 +47,7 @@ impl LogFormat {
 ///
 /// * `format` - Log output format (Text or Json)
 /// * `filter` - Log filter directive (e.g., "info", "debug", "my_app=debug")
-///
-/// # Example
-///
-/// ```ignore
-/// use server_kit::{LogFormat, init_logging};
-///
-/// // Text format
-/// init_logging(LogFormat::Text, "info");
-///
-/// // JSON format
-/// init_logging(LogFormat::Json, "info");
-///
-/// // From environment variable
-/// init_logging(LogFormat::from_env(), "info");
-/// ```
+#[cfg(feature = "tracing")]
 pub fn init_logging(format: LogFormat, filter: &str) {
     use tracing_subscriber::{fmt, EnvFilter};
 
@@ -80,14 +66,7 @@ pub fn init_logging(format: LogFormat, filter: &str) {
 /// Initialize logging from environment variables.
 ///
 /// Reads `LOG_FORMAT` for format (text/json) and `RUST_LOG` for filter directives.
-///
-/// # Example
-///
-/// ```ignore
-/// use server_kit::init_logging_from_env;
-///
-/// init_logging_from_env();
-/// ```
+#[cfg(feature = "tracing")]
 pub fn init_logging_from_env() {
     init_logging(LogFormat::from_env(), "info");
 }
@@ -112,4 +91,3 @@ mod tests {
         assert_eq!(LogFormat::default(), LogFormat::Text);
     }
 }
-

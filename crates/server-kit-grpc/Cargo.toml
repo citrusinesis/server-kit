@@ -1,0 +1,58 @@
+[package]
+name = "server-kit-grpc"
+description = "Thin utility crate for tonic gRPC servers and clients"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords = ["grpc", "tonic", "server", "client", "protobuf"]
+categories = ["network-programming", "asynchronous"]
+
+[features]
+default = ["tracing", "health"]
+tracing = ["server-kit/tracing"]
+health = ["dep:tonic-health"]
+tls = ["tonic/tls"]
+metrics = ["dep:metrics", "dep:metrics-exporter-prometheus"]
+reflection = ["dep:tonic-reflection"]
+full = ["tracing", "health", "tls", "metrics", "reflection"]
+
+[dependencies]
+server-kit.workspace = true
+tonic = { version = "0.12", default-features = false, features = ["transport", "channel"] }
+prost = "0.13"
+tokio = { version = "1", features = ["signal", "rt-multi-thread", "macros"] }
+tower = { version = "0.5", features = ["timeout"] }
+http = "1"
+serde = { version = "1", features = ["derive"] }
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }
+
+# Optional: Health checking
+tonic-health = { version = "0.12", optional = true }
+
+# Optional: Server reflection
+tonic-reflection = { version = "0.12", optional = true }
+
+# Optional: Metrics
+metrics = { version = "0.24", optional = true }
+metrics-exporter-prometheus = { version = "0.16", optional = true }
+
+[build-dependencies]
+tonic-build = "0.12"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+async-stream = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[[example]]
+name = "greeter_server"
+required-features = ["health", "reflection"]
+
+[[example]]
+name = "greeter_client"
+
+[[example]]
+name = "simple_server"
