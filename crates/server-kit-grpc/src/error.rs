@@ -4,8 +4,6 @@ use tonic::{Code, Status};
 
 /// Trait for converting errors into gRPC Status responses.
 ///
-/// This mirrors the `HttpError` trait from `server-kit` but maps to gRPC status codes.
-///
 /// # Example
 ///
 /// ```ignore
@@ -41,60 +39,14 @@ use tonic::{Code, Status};
 /// }
 /// ```
 pub trait GrpcError: std::fmt::Debug {
-    /// The gRPC status code.
     fn code(&self) -> Code;
-
-    /// The error message.
     fn message(&self) -> &str;
 
-    /// Convert to tonic::Status.
     fn into_status(self) -> Status
     where
         Self: Sized,
     {
         Status::new(self.code(), self.message())
-    }
-}
-
-/// Create a Status from a code and message.
-pub fn status(code: Code, message: impl Into<String>) -> Status {
-    Status::new(code, message)
-}
-
-/// Common error constructors.
-pub mod errors {
-    use tonic::Status;
-
-    pub fn not_found(message: impl Into<String>) -> Status {
-        Status::not_found(message)
-    }
-
-    pub fn invalid_argument(message: impl Into<String>) -> Status {
-        Status::invalid_argument(message)
-    }
-
-    pub fn internal(message: impl Into<String>) -> Status {
-        Status::internal(message)
-    }
-
-    pub fn unauthenticated(message: impl Into<String>) -> Status {
-        Status::unauthenticated(message)
-    }
-
-    pub fn permission_denied(message: impl Into<String>) -> Status {
-        Status::permission_denied(message)
-    }
-
-    pub fn already_exists(message: impl Into<String>) -> Status {
-        Status::already_exists(message)
-    }
-
-    pub fn unavailable(message: impl Into<String>) -> Status {
-        Status::unavailable(message)
-    }
-
-    pub fn deadline_exceeded(message: impl Into<String>) -> Status {
-        Status::deadline_exceeded(message)
     }
 }
 
@@ -213,31 +165,6 @@ mod tests {
             assert_eq!(status.code(), code);
             assert_eq!(status.message(), msg);
         }
-    }
-
-    #[test]
-    fn error_constructors() {
-        let status = errors::not_found("User not found");
-        assert_eq!(status.code(), Code::NotFound);
-
-        let status = errors::invalid_argument("Invalid ID");
-        assert_eq!(status.code(), Code::InvalidArgument);
-
-        let status = errors::internal("Database error");
-        assert_eq!(status.code(), Code::Internal);
-
-        let status = errors::unauthenticated("Token required");
-        assert_eq!(status.code(), Code::Unauthenticated);
-
-        let status = errors::permission_denied("Admin only");
-        assert_eq!(status.code(), Code::PermissionDenied);
-    }
-
-    #[test]
-    fn status_helper() {
-        let s = status(Code::Aborted, "Operation aborted");
-        assert_eq!(s.code(), Code::Aborted);
-        assert_eq!(s.message(), "Operation aborted");
     }
 
     #[test]

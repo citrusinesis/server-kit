@@ -302,7 +302,6 @@ mod tests {
             .build()
             .unwrap();
 
-        // Builder endpoint should override file
         assert_eq!(config.endpoint, "http://override.example.com:9000");
     }
 }

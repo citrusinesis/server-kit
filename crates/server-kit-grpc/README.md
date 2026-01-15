@@ -259,17 +259,6 @@ impl From<AppError> for Status {
 }
 ```
 
-#### Helper Functions
-
-```rust
-use server_kit_grpc::errors;
-
-// Convenience functions for common errors
-Err(errors::not_found("User not found"))
-Err(errors::invalid_argument("Name is required"))
-Err(errors::internal("Database error"))
-```
-
 ## Full Example
 
 ```rust

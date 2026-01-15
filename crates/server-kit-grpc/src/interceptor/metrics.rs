@@ -100,8 +100,6 @@ mod tests {
     #[test]
     fn metrics_layer_creates_service() {
         let layer = MetricsLayer::new();
-
-        // Type check - layer should implement Layer trait
         fn assert_layer<L: Layer<DummyService>>(_: L) {}
         assert_layer(layer);
     }

@@ -29,7 +29,6 @@ fn build_endpoint(config: &ChannelConfig) -> Result<Endpoint, Error> {
         endpoint = endpoint.keep_alive_timeout(Duration::from_secs(timeout));
     }
 
-    // Apply TLS configuration if enabled
     #[cfg(feature = "tls")]
     if let Some(tls_config) = config.tls_config().map_err(Error::tls)? {
         endpoint = endpoint
