@@ -8,13 +8,12 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
-/// Trait to validate authentication tokens.
+use super::AuthError;
+
 pub trait TokenValidator: Clone + Send + Sync + 'static {
-    /// Validate a token and return Ok if valid.
-    fn validate(&self, token: &str) -> Result<(), crate::AuthError>;
+    fn validate(&self, token: &str) -> Result<(), AuthError>;
 }
 
-/// Authentication layer.
 #[derive(Clone)]
 pub struct AuthLayer<V> {
     validator: Arc<V>,
@@ -39,7 +38,6 @@ impl<S, V: TokenValidator> Layer<S> for AuthLayer<V> {
     }
 }
 
-/// Authentication service.
 #[derive(Clone)]
 pub struct AuthService<S, V> {
     inner: S,
@@ -74,7 +72,7 @@ where
 
         Box::pin(async move {
             let Some(token) = token else {
-                return Ok(crate::AuthError::MissingToken.into_response());
+                return Ok(AuthError::MissingToken.into_response());
             };
 
             if let Err(e) = validator.validate(&token) {
@@ -86,14 +84,11 @@ where
     }
 }
 
-/// Extension trait for adding authentication to Router.
 pub trait AuthExt {
-    /// Add authentication middleware with a custom validator.
     fn with_auth<V: TokenValidator>(self, validator: V) -> Self;
 
-    /// Add JWT authentication middleware.
     #[cfg(feature = "jwt")]
-    fn with_jwt_auth(self, config: crate::JwtConfig) -> Self;
+    fn with_jwt_auth(self, config: &impl AsRef<super::JwtConfig>) -> Self;
 }
 
 impl AuthExt for Router {
@@ -102,7 +97,13 @@ impl AuthExt for Router {
     }
 
     #[cfg(feature = "jwt")]
-    fn with_jwt_auth(self, config: crate::JwtConfig) -> Self {
-        self.with_auth(config)
+    fn with_jwt_auth(self, config: &impl AsRef<super::JwtConfig>) -> Self {
+        self.with_auth(config.as_ref().clone())
+    }
+}
+
+impl AsRef<super::JwtConfig> for super::JwtConfig {
+    fn as_ref(&self) -> &super::JwtConfig {
+        self
     }
 }

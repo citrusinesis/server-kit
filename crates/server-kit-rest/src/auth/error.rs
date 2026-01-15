@@ -2,16 +2,11 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use std::fmt;
 
-/// Authentication errors.
 #[derive(Debug)]
 pub enum AuthError {
-    /// Missing authorization header.
     MissingToken,
-    /// Invalid token format.
     InvalidToken(String),
-    /// Token has expired.
     TokenExpired,
-    /// Insufficient permissions.
     Forbidden,
 }
 

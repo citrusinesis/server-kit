@@ -2,10 +2,9 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::error::AuthError;
-use crate::layer::TokenValidator;
+use super::error::AuthError;
+use super::layer::TokenValidator;
 
-/// JWT configuration.
 #[derive(Clone)]
 pub struct JwtConfig {
     encoding_key: EncodingKey,
@@ -13,8 +12,21 @@ pub struct JwtConfig {
     validation: Validation,
 }
 
+impl<'de> Deserialize<'de> for JwtConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Raw {
+            secret: String,
+        }
+        let raw = Raw::deserialize(deserializer)?;
+        Ok(Self::new(&raw.secret))
+    }
+}
+
 impl JwtConfig {
-    /// Create a new JWT configuration with a secret key.
     pub fn new(secret: &str) -> Self {
         Self {
             encoding_key: EncodingKey::from_secret(secret.as_bytes()),
@@ -23,13 +35,11 @@ impl JwtConfig {
         }
     }
 
-    /// Encode claims into a JWT token.
     pub fn encode<T: Serialize>(&self, claims: &T) -> Result<String, AuthError> {
         encode(&Header::default(), claims, &self.encoding_key)
             .map_err(|e| AuthError::InvalidToken(e.to_string()))
     }
 
-    /// Decode a JWT token into claims.
     pub fn decode<T: DeserializeOwned>(&self, token: &str) -> Result<T, AuthError> {
         decode::<T>(token, &self.decoding_key, &self.validation)
             .map(|data| data.claims)
@@ -46,14 +56,10 @@ impl TokenValidator for JwtConfig {
     }
 }
 
-/// Standard JWT claims.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
-    /// Subject (user ID).
     pub sub: String,
-    /// Expiration time (Unix timestamp).
     pub exp: u64,
-    /// Issued at (Unix timestamp).
     #[serde(default = "now")]
     pub iat: u64,
 }
@@ -66,7 +72,6 @@ fn now() -> u64 {
 }
 
 impl Claims {
-    /// Create new claims for a subject with expiration in seconds from now.
     pub fn new(sub: impl Into<String>, expires_in_secs: u64) -> Self {
         let now = now();
         Self {

@@ -2,11 +2,7 @@ use axum::http::StatusCode;
 use axum::routing::get;
 use axum::Router;
 
-/// Returns a router with health check endpoint.
-///
-/// | Path          | Response                     |
-/// |---------------|------------------------------|
-/// | `GET /health` | `200 OK` - Server is running |
+/// Returns a router with `GET /health` endpoint.
 pub fn health_routes() -> Router {
     Router::new().route("/health", get(|| async { StatusCode::OK }))
 }

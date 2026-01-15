@@ -1,26 +1,17 @@
-//! Logging initialization helpers.
-//!
-//! Provides convenient functions to initialize tracing with different formats.
+//! Logging initialization.
 
 use std::{env, str::FromStr};
 
-/// Log output format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LogFormat {
-    /// Human-readable text format (default).
     #[default]
     Text,
-    /// JSON format for structured logging.
     Json,
 }
 
 impl FromStr for LogFormat {
     type Err = std::convert::Infallible;
 
-    /// Parse from string (case-insensitive).
-    ///
-    /// - "json" -> Json
-    /// - anything else -> Text
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s.to_lowercase().as_str() {
             "json" => Self::Json,
@@ -30,9 +21,6 @@ impl FromStr for LogFormat {
 }
 
 impl LogFormat {
-    /// Load from `LOG_FORMAT` environment variable.
-    ///
-    /// Defaults to `Text` if not set or invalid.
     pub fn from_env() -> Self {
         env::var("LOG_FORMAT")
             .ok()
@@ -41,12 +29,6 @@ impl LogFormat {
     }
 }
 
-/// Initialize tracing with the specified format.
-///
-/// # Arguments
-///
-/// * `format` - Log output format (Text or Json)
-/// * `filter` - Log filter directive (e.g., "info", "debug", "my_app=debug")
 #[cfg(feature = "tracing")]
 pub fn init_logging(format: LogFormat, filter: &str) {
     use tracing_subscriber::{fmt, EnvFilter};
@@ -63,9 +45,6 @@ pub fn init_logging(format: LogFormat, filter: &str) {
     };
 }
 
-/// Initialize logging from environment variables.
-///
-/// Reads `LOG_FORMAT` for format (text/json) and `RUST_LOG` for filter directives.
 #[cfg(feature = "tracing")]
 pub fn init_logging_from_env() {
     init_logging(LogFormat::from_env(), "info");

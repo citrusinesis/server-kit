@@ -1,13 +1,6 @@
-//! # server-kit-core
+//! # server-kit
 //!
-//! Shared utilities for server-kit crates.
-//!
-//! This crate provides common functionality used by both `server-kit` (HTTP/Axum)
-//! and `server-kit-grpc` (gRPC/Tonic).
-//!
-//! ## Features
-//!
-//! - `tracing` - Enable logging initialization with tracing-subscriber
+//! Shared utilities for `server-kit-rest` and `server-kit-grpc`.
 
 mod config;
 mod environment;

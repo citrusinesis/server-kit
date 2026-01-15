@@ -3,7 +3,6 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-// Re-export from core
 pub use server_kit::{ConfigBuilder, ConfigError, Environment};
 
 /// Server configuration.

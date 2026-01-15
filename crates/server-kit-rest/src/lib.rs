@@ -1,4 +1,4 @@
-//! # server-kit
+//! # server-kit-rest
 //!
 //! A thin utility crate for reducing axum server boilerplate.
 //!
@@ -6,7 +6,7 @@
 //!
 //! ```rust,ignore
 //! use axum::{Router, routing::get};
-//! use server_kit::{RouterExt, ServerConfig};
+//! use server_kit_rest::{RouterExt, ServerConfig};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -28,7 +28,7 @@
 //!
 //! ```rust,ignore
 //! use axum::Router;
-//! use server_kit::{RouterExt, ServerConfig};
+//! use server_kit_rest::{RouterExt, ServerConfig};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,6 +48,8 @@
 //! }
 //! ```
 
+#[cfg(feature = "auth")]
+pub mod auth;
 mod config;
 mod error;
 mod layer;

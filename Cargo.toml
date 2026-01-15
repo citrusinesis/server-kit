@@ -4,7 +4,6 @@ members = [
     "crates/server-kit",
     "crates/server-kit-rest",
     "crates/server-kit-grpc",
-    "crates/server-kit-auth",
 ]
 
 [workspace.package]

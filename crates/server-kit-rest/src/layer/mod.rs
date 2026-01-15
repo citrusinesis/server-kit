@@ -22,19 +22,7 @@ pub use json_error::JsonErrorLayer;
 #[cfg(feature = "ratelimit")]
 pub use ratelimit::RateLimitLayer;
 
-/// Applies the default middleware stack to a router.
 pub(crate) fn default_layers(router: Router, config: &ServerConfig) -> Router {
-    // Layer execution order for RESPONSES (bottom to top):
-    //   Handler -> CatchPanic -> RequestId -> Trace -> Timeout -> Compression -> CORS -> JsonError
-    //
-    // In Tower, .layer(X) wraps the service: service.layer(A).layer(B) = B(A(service))
-    // The LAST layer added is OUTERMOST and processes responses LAST.
-    //
-    // JsonErrorLayer MUST be outermost (added LAST) to catch ALL error responses:
-    // - Panics (from CatchPanicLayer)
-    // - Timeouts (from TimeoutLayer)
-    // - CORS rejections (from CorsLayer)
-
     let router = router
         .layer(CatchPanicLayer::new())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))

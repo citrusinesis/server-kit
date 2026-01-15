@@ -14,7 +14,9 @@ compression = ["tower-http/compression-full"]
 cors = ["tower-http/cors"]
 metrics = ["dep:metrics", "dep:metrics-exporter-prometheus"]
 ratelimit = ["dep:governor"]
-full = ["tracing", "compression", "cors", "metrics", "ratelimit"]
+auth = []
+jwt = ["auth", "dep:jsonwebtoken"]
+full = ["tracing", "compression", "cors", "metrics", "ratelimit", "jwt"]
 
 [dependencies]
 server-kit.workspace = true
@@ -47,6 +49,10 @@ optional = true
 
 [dependencies.governor]
 version = "0.8"
+optional = true
+
+[dependencies.jsonwebtoken]
+version = "9"
 optional = true
 
 [dev-dependencies]
