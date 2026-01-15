@@ -4,7 +4,7 @@ A thin extension crate for tonic gRPC servers and clients.
 
 ## Design Philosophy
 
-This crate follows the same design philosophy as `server-kit` for HTTP servers:
+This crate follows the same design philosophy as `server-kit-rest` for HTTP servers:
 
 **Extend native tonic code with chainable methods, not replace it.**
 
